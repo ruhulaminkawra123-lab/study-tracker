@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0d1017">
+<meta name="color-scheme" content="dark">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Study Timer">
+<title>Study Time Tracker</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230d1017'/%3E%3Ccircle cx='32' cy='35' r='16' fill='none' stroke='%23f2b544' stroke-width='5'/%3E%3Cpath d='M32 35V25M26 10h12' stroke='%23f2b544' stroke-width='5' stroke-linecap='round'/%3E%3C/svg%3E">
+<style>
+:root{
+  --bg:#0d1017;--surface:#161b25;--surface2:#1e2532;--line:#2a3243;
+  --text:#eef1f6;--muted:#9aa4b8;--lamp:#f2b544;--lamp-ink:#1a1203;
+  --danger:#ff7b7b;--ok:#7fd6a4;
+  --font:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  box-sizing:border-box;
+}
+*,*::before,*::after{box-sizing:inherit}
+html{background:var(--bg);-webkit-text-size-adjust:100%}
+body{
+  margin:0;min-height:100vh;background:var(--bg);color:var(--text);font-family:var(--font);
+  font-size:16px;line-height:1.5;-webkit-tap-highlight-color:transparent;
+  padding:max(20px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) max(32px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left));
+}
+main{max-width:520px;margin:0 auto;display:grid;gap:16px}
+h1{font-size:1.15rem;font-weight:600;margin:0 0 4px;letter-spacing:.01em}
+h2{font-size:1rem;font-weight:600;margin:0 0 12px}
+p{margin:0}
+.muted{color:var(--muted);font-size:.9rem}
+section{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:18px}
+.timer-card{text-align:center;padding:28px 18px 20px;background:radial-gradient(120% 90% at 50% 0%,#232a3a 0%,var(--surface) 65%)}
+.status{display:inline-flex;align-items:center;gap:8px;color:var(--muted);font-size:.9rem;min-height:24px}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--line)}
+.running .dot{background:var(--lamp);box-shadow:0 0 12px var(--lamp)}
+.paused .dot{background:var(--muted)}
+#display{
+  font-size:clamp(3rem,17vw,4.6rem);font-weight:300;letter-spacing:.02em;margin:10px 0 22px;
+  font-variant-numeric:tabular-nums;font-feature-settings:"tnum";line-height:1.1;
+}
+.controls{display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:10px}
+button{
+  font:inherit;font-weight:600;min-height:52px;border-radius:14px;border:1px solid var(--line);
+  background:var(--surface2);color:var(--text);cursor:pointer;padding:0 14px;touch-action:manipulation;
+  transition:transform .08s ease,background .15s ease,opacity .15s ease;
+}
+button:active:not(:disabled){transform:scale(.97)}
+button:disabled{opacity:.35;cursor:not-allowed}
+button:focus-visible,summary:focus-visible{outline:3px solid var(--lamp);outline-offset:2px}
+.primary{background:var(--lamp);border-color:var(--lamp);color:var(--lamp-ink)}
+.danger{color:var(--danger);border-color:#5a2f37;background:transparent}
+.danger-solid{background:var(--danger);border-color:var(--danger);color:#2a0a0a}
+.link-btn{background:none;border:0;min-height:44px;color:var(--muted);font-weight:500;text-decoration:underline;margin-top:6px}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:14px 10px;text-align:center}
+.stat b{display:block;font-size:1.25rem;font-weight:600;font-variant-numeric:tabular-nums;margin-top:2px}
+.stat span{font-size:.8rem;color:var(--muted)}
+.bars{display:grid;grid-template-columns:repeat(7,1fr);gap:8px;align-items:end;height:150px}
+.bar{display:flex;flex-direction:column;justify-content:flex-end;align-items:center;height:100%;gap:6px;min-width:0}
+.bar i{display:block;width:100%;max-width:34px;border-radius:8px 8px 4px 4px;background:var(--line);min-height:4px}
+.bar.today i{background:var(--lamp)}
+.bar small{font-size:.72rem;color:var(--muted);white-space:nowrap}
+.bar em{font-style:normal;font-size:.72rem;color:var(--text);font-variant-numeric:tabular-nums;white-space:nowrap}
+ul{list-style:none;margin:0;padding:0}
+li.row{display:flex;justify-content:space-between;gap:12px;padding:11px 0;border-top:1px solid var(--line)}
+li.row:first-child{border-top:0}
+li.row b{font-variant-numeric:tabular-nums;font-weight:600;white-space:nowrap}
+.empty{color:var(--muted);padding:6px 0}
+.btn-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+details summary{cursor:pointer;font-weight:600;min-height:44px;display:flex;align-items:center}
+input[type=file]{display:none}
+dialog{
+  border:1px solid var(--line);border-radius:18px;background:var(--surface);color:var(--text);
+  width:min(92vw,420px);padding:22px;font-family:var(--font);
+}
+dialog::backdrop{background:rgba(3,5,9,.72)}
+dialog h2{margin-bottom:8px}
+.dlg-actions{display:grid;gap:10px;margin-top:18px}
+#toast{
+  position:fixed;left:50%;bottom:max(20px,env(safe-area-inset-bottom));transform:translate(-50%,20px);
+  background:var(--surface2);border:1px solid var(--line);border-radius:14px;padding:12px 16px;
+  max-width:min(92vw,460px);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:10;
+}
+#toast.show{opacity:1;transform:translate(-50%,0)}
+#toast.err{border-color:var(--danger);color:var(--danger)}
+#toast.ok{border-color:var(--ok)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+@media (max-width:360px){.controls{grid-template-columns:1fr 1fr}.controls .primary{grid-column:1/-1}}
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Study Time Tracker</h1>
+    <p class="muted" id="todayLabel"></p>
+  </header>
+
+  <section class="timer-card" id="timerCard" aria-label="Stopwatch">
+    <div class="status" id="status"><span class="dot"></span><span id="statusText">Ready</span></div>
+    <div id="display" role="timer" aria-live="off">00:00:00</div>
+    <div class="controls">
+      <button class="primary" id="btnStart">Start</button>
+      <button id="btnPause" disabled>Pause</button>
+      <button id="btnStop" disabled>Stop &amp; log</button>
+    </div>
+    <button class="link-btn" id="btnDiscard" hidden>Discard this session</button>
+  </section>
+
+  <div class="stats" aria-label="Totals">
+    <div class="stat"><span>Today</span><b id="sToday">0h 0m</b></div>
+    <div class="stat"><span>Last 7 days</span><b id="sWeek">0h 0m</b></div>
+    <div class="stat"><span>Last 30 days</span><b id="sMonth">0h 0m</b></div>
+  </div>
+
+  <section aria-label="Daily breakdown">
+    <h2>Past 7 days</h2>
+    <div class="bars" id="bars"></div>
+  </section>
+
+  <section aria-label="Recent sessions">
+    <h2>Recent sessions</h2>
+    <ul id="sessions"></ul>
+  </section>
+
+  <section aria-label="Backup and restore">
+    <h2>Backup &amp; restore</h2>
+    <p class="muted">Your data lives only in this browser. Export a copy now and then, and import it to restore on any device.</p>
+    <div class="btn-row">
+      <button id="btnExport">Export JSON</button>
+      <button id="btnImport">Import JSON</button>
+    </div>
+    <input type="file" id="fileInput" accept="application/json,.json">
+    <details>
+      <summary>Danger zone</summary>
+      <button class="danger" id="btnReset" style="width:100%">Delete all study data</button>
+    </details>
+  </section>
+</main>
+
+<dialog id="dlg" aria-labelledby="dlgTitle">
+  <h2 id="dlgTitle"></h2>
+  <p class="muted" id="dlgMsg"></p>
+  <div class="dlg-actions" id="dlgActions"></div>
+</dialog>
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(() => {
+  'use strict';
+
+  /* ---------- Constants & helpers ---------- */
+  const KEY_DAYS = 'studyTracker.days';         // { "YYYY-MM-DD": total_seconds }
+  const KEY_SESSIONS = 'studyTracker.sessions'; // [{ day, start, end, seconds }]
+  const KEY_TIMER = 'studyTracker.timer';       // running/paused stopwatch state
+  const MAX_SESSIONS = 500;
+  const MAX_DAY_SECONDS = 86400;
+  const KEY_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+  const $ = (id) => document.getElementById(id);
+  const pad = (n) => String(n).padStart(2, '0');
+  const dateKey = (d = new Date()) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  const keyToDate = (k) => { const [y, m, d] = k.split('-').map(Number); return new Date(y, m - 1, d); };
+  const isRealDate = (k) => KEY_RE.test(k) && dateKey(keyToDate(k)) === k;
+  const isNum = (v) => typeof v === 'number' && Number.isFinite(v);
+  const hm = (s) => `${Math.floor(s / 3600)}h ${Math.floor((s % 3600) / 60)}m`;
+  const hms = (s) => {
+    const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
+    return h ? `${h}h ${m}m ${sec}s` : m ? `${m}m ${sec}s` : `${sec}s`;
+  };
+  const clock = (s) => `${pad(Math.floor(s / 3600))}:${pad(Math.floor((s % 3600) / 60))}:${pad(s % 60)}`;
+
+  /* ---------- Storage layer ---------- */
+  function read(key, fallback) {
+    try {
+      const raw = localStorage.getItem(key);
+      return raw ? JSON.parse(raw) : fallback;
+    } catch (e) { return fallback; }
+  }
+  function write(key, value) {
+    try { localStorage.setItem(key, JSON.stringify(value)); return true; }
+    catch (e) { toast('Could not save. Browser storage is full or blocked. Export your data now.', 'err'); return false; }
+  }
+  function cleanDays(obj) {
+    const out = {};
+    if (obj && typeof obj === 'object' && !Array.isArray(obj)) {
+      for (const [k, v] of Object.entries(obj)) {
+        if (isRealDate(k) && isNum(v) && v >= 0 && v <= MAX_DAY_SECONDS) out[k] = Math.round(v);
+      }
+    }
+    return out;
+  }
+  function cleanSessions(arr) {
+    if (!Array.isArray(arr)) return [];
+    return arr.filter((s) => s && isRealDate(s.day) && isNum(s.start) && isNum(s.end) && isNum(s.seconds) && s.seconds > 0)
+      .map((s) => ({ day: s.day, start: s.start, end: s.end, seconds: Math.round(s.seconds) }))
+      .sort((a, b) => b.end - a.end).slice(0, MAX_SESSIONS);
+  }
+  function cleanTimer(t) {
+    const idle = { status: 'idle', startedAt: null, accumulated: 0, day: null, sessionStart: null };
+    if (!t || typeof t !== 'object') return idle;
+    if (!['running', 'paused'].includes(t.status) || !isNum(t.accumulated) || t.accumulated < 0 || !isRealDate(t.day) || !isNum(t.sessionStart)) return idle;
+    if (t.status === 'running' && !isNum(t.startedAt)) return idle;
+    return { status: t.status, startedAt: t.startedAt ?? null, accumulated: t.accumulated, day: t.day, sessionStart: t.sessionStart };
+  }
+
+  let days = cleanDays(read(KEY_DAYS, {}));
+  let sessions = cleanSessions(read(KEY_SESSIONS, []));
+  let timer = cleanTimer(read(KEY_TIMER, null));
+  const persistTimer = () => write(KEY_TIMER, timer);
+
+  /* ---------- Stopwatch (timestamp based) ---------- */
+  const elapsedMs = () => timer.status === 'running'
+    ? timer.accumulated + Math.max(0, Date.now() - timer.startedAt)
+    : timer.accumulated;
+
+  let wakeLock = null;
+  async function lockScreen() {
+    try {
+      if ('wakeLock' in navigator && !wakeLock) {
+        wakeLock = await navigator.wakeLock.request('screen');
+        wakeLock.addEventListener('release', () => { wakeLock = null; });
+      }
+    } catch (e) { /* optional feature; ignore */ }
+  }
+  function unlockScreen() { if (wakeLock) { wakeLock.release().catch(() => {}); wakeLock = null; } }
+
+  function start() {
+    if (timer.status === 'running') return;
+    if (timer.status === 'idle') {
+      timer = { status: 'running', startedAt: Date.now(), accumulated: 0, day: dateKey(), sessionStart: Date.now() };
+    } else {
+      timer.status = 'running';
+      timer.startedAt = Date.now();
+    }
+    persistTimer();
+    lockScreen();
+    renderTimer();
+  }
+  function pause() {
+    if (timer.status !== 'running') return;
+    timer.accumulated = elapsedMs();
+    timer.status = 'paused';
+    timer.startedAt = null;
+    persistTimer();
+    unlockScreen();
+    renderTimer();
+  }
+  function resetTimer() {
+    timer = { status: 'idle', startedAt: null, accumulated: 0, day: null, sessionStart: null };
+    persistTimer();
+    unlockScreen();
+  }
+  async function stopAndLog() {
+    if (timer.status === 'idle') return;
+    const wasRunning = timer.status === 'running';
+    const secs = Math.round(elapsedMs() / 1000);
+    const end = Date.now();
+    if (wasRunning) pause(); // freeze the clock while the dialog is open
+    if (secs < 1) {
+      resetTimer(); renderAll();
+      toast('Session was under a second, so nothing was logged.');
+      return;
+    }
+    const ok = await ask('Log this session?', `${hms(secs)} will be added to ${timer.day === dateKey() ? 'today' : timer.day}.`, [
+      { label: 'Log session', value: 'yes', cls: 'primary' },
+      { label: 'Keep timing', value: 'no' }
+    ]);
+    if (ok !== 'yes') { if (wasRunning) start(); return; }
+    const nextDays = { ...days, [timer.day]: Math.min(MAX_DAY_SECONDS, (days[timer.day] || 0) + secs) };
+    if (!write(KEY_DAYS, nextDays)) return; // keep the timer intact if saving failed
+    days = nextDays;
+    sessions = cleanSessions([{ day: timer.day, start: timer.sessionStart, end, seconds: secs }, ...sessions]);
+    write(KEY_SESSIONS, sessions);
+    resetTimer();
+    renderAll();
+    toast(`Logged ${hms(secs)}. Saved.`, 'ok');
+  }
+  async function discard() {
+    if (timer.status === 'idle') return;
+    const wasRunning = timer.status === 'running';
+    if (wasRunning) pause();
+    const r = await ask('Discard this session?', `${hms(Math.round(elapsedMs() / 1000))} of study time will be lost and not logged.`, [
+      { label: 'Discard session', value: 'yes', cls: 'danger-solid' },
+      { label: 'Keep it', value: 'no' }
+    ]);
+    if (r === 'yes') { resetTimer(); renderAll(); toast('Session discarded.'); }
+    else if (wasRunning) start();
+  }
+
+  /* ---------- Analytics ---------- */
+  function keyDaysAgo(i) {
+    const n = new Date();
+    return dateKey(new Date(n.getFullYear(), n.getMonth(), n.getDate() - i));
+  }
+  function sumLast(n) {
+    let total = 0;
+    for (let i = 0; i < n; i++) total += days[keyDaysAgo(i)] || 0;
+    return total;
+  }
+
+  /* ---------- Rendering ---------- */
+  let shownDay = dateKey();
+  function renderTimer() {
+    const secs = Math.floor(elapsedMs() / 1000);
+    $('display').textContent = clock(secs);
+    document.title = timer.status === 'idle' ? 'Study Time Tracker' : `${clock(secs)} · Studying`;
+    const card = $('timerCard');
+    card.className = 'timer-card ' + timer.status;
+    $('statusText').textContent = { idle: 'Ready', running: 'Studying', paused: 'Paused' }[timer.status];
+    $('btnStart').textContent = timer.status === 'paused' ? 'Resume' : 'Start';
+    $('btnStart').disabled = timer.status === 'running';
+    $('btnPause').disabled = timer.status !== 'running';
+    $('btnStop').disabled = timer.status === 'idle';
+    $('btnDiscard').hidden = timer.status === 'idle';
+  }
+  function dayLabel(k) {
+    if (k === keyDaysAgo(0)) return 'Today';
+    if (k === keyDaysAgo(1)) return 'Yesterday';
+    return keyToDate(k).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+  }
+  function renderStats() {
+    shownDay = dateKey();
+    $('todayLabel').textContent = new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
+    $('sToday').textContent = hm(days[keyDaysAgo(0)] || 0);
+    $('sWeek').textContent = hm(sumLast(7));
+    $('sMonth').textContent = hm(sumLast(30));
+
+    const series = [];
+    for (let i = 6; i >= 0; i--) {
+      const k = keyDaysAgo(i);
+      series.push({ k, v: days[k] || 0, today: i === 0 });
+    }
+    const max = Math.max(...series.map((s) => s.v), 1);
+    $('bars').innerHTML = series.map((s) => {
+      const h = s.v ? Math.max(4, Math.round((s.v / max) * 100)) : 0;
+      const label = keyToDate(s.k).toLocaleDateString(undefined, { weekday: 'short' });
+      return `<div class="bar${s.today ? ' today' : ''}" title="${dayLabel(s.k)}: ${hm(s.v)}">
+        <em>${s.v ? hm(s.v).replace(/ 0m$/, '') : '–'}</em><i style="height:${h}%"></i><small>${label}</small></div>`;
+    }).join('');
+
+    const list = $('sessions');
+    if (!sessions.length) {
+      list.innerHTML = '<li class="empty">No sessions yet. Press Start to begin your first one.</li>';
+    } else {
+      const tf = { hour: '2-digit', minute: '2-digit' };
+      list.innerHTML = sessions.slice(0, 8).map((s) => `<li class="row">
+        <span>${dayLabel(s.day)}<br><span class="muted">${new Date(s.start).toLocaleTimeString(undefined, tf)} – ${new Date(s.end).toLocaleTimeString(undefined, tf)}</span></span>
+        <b>${hms(s.seconds)}</b></li>`).join('');
+    }
+  }
+  function renderAll() { renderTimer(); renderStats(); }
+
+  /* ---------- Dialog & toast ---------- */
+  const dlg = $('dlg');
+  function ask(title, message, buttons) {
+    return new Promise((resolve) => {
+      $('dlgTitle').textContent = title;
+      $('dlgMsg').textContent = message;
+      const box = $('dlgActions');
+      box.innerHTML = '';
+      let answer = 'cancel';
+      for (const b of buttons) {
+        const el = document.createElement('button');
+        el.textContent = b.label;
+        if (b.cls) el.className = b.cls;
+        el.addEventListener('click', () => { answer = b.value; dlg.close(); });
+        box.appendChild(el);
+      }
+      const cancel = document.createElement('button');
+      cancel.textContent = 'Cancel';
+      cancel.addEventListener('click', () => { answer = 'cancel'; dlg.close(); });
+      if (!buttons.some((b) => b.value === 'no')) box.appendChild(cancel);
+      dlg.addEventListener('close', () => resolve(answer), { once: true });
+      dlg.showModal();
+    });
+  }
+  let toastTimer;
+  function toast(msg, type = '') {
+    const t = $('toast');
+    t.textContent = msg;
+    t.className = `show ${type}`;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { t.className = ''; }, type === 'err' ? 6000 : 3000);
+  }
+
+  /* ---------- Backup & restore ---------- */
+  function exportJSON() {
+    if (!Object.keys(days).length && !sessions.length) { toast('Nothing to export yet.', 'err'); return; }
+    const payload = { app: 'study-time-tracker', version: 1, exportedAt: new Date().toISOString(), days, sessions };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `study-tracker-${dateKey()}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+    toast('Backup downloaded.', 'ok');
+  }
+  function parseImport(text) {
+    let data;
+    try { data = JSON.parse(text); } catch (e) { throw new Error('This file is not valid JSON.'); }
+    if (!data || typeof data !== 'object' || Array.isArray(data)) throw new Error('Expected an object of dates and seconds, like {"2026-01-31": 5400}.');
+    const rawDays = data.days && typeof data.days === 'object' && !Array.isArray(data.days) ? data.days : data;
+    const entries = Object.entries(rawDays);
+    if (!entries.length) throw new Error('The file has no study data in it.');
+    const bad = entries.filter(([k, v]) => !isRealDate(k) || !isNum(v) || v < 0 || v > MAX_DAY_SECONDS);
+    if (bad.length) throw new Error(`${bad.length} of ${entries.length} entries are invalid (first: "${bad[0][0]}"). Dates must be YYYY-MM-DD and seconds between 0 and ${MAX_DAY_SECONDS}.`);
+    return { days: cleanDays(rawDays), sessions: cleanSessions(data.sessions) };
+  }
+  async function importFile(file) {
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) { toast('That file is too large to be a backup (over 5 MB).', 'err'); return; }
+    let imported;
+    try { imported = parseImport(await file.text()); }
+    catch (e) { toast(`Import failed: ${e.message} Your data was not changed.`, 'err'); return; }
+    const n = Object.keys(imported.days).length;
+    const total = Object.values(imported.days).reduce((a, b) => a + b, 0);
+    const choice = await ask('Import backup?', `Found ${n} day${n === 1 ? '' : 's'} totaling ${hm(total)}. Merge keeps your current days and overwrites matching dates. Replace deletes current data first.`, [
+      { label: 'Merge with current data', value: 'merge', cls: 'primary' },
+      { label: 'Replace current data', value: 'replace', cls: 'danger-solid' }
+    ]);
+    if (choice === 'cancel') { toast('Import cancelled. Your data was not changed.'); return; }
+    const nextDays = choice === 'replace' ? imported.days : { ...days, ...imported.days };
+    let nextSessions = imported.sessions;
+    if (choice === 'merge') {
+      const seen = new Set(sessions.map((s) => `${s.start}-${s.seconds}`));
+      nextSessions = cleanSessions([...sessions, ...imported.sessions.filter((s) => !seen.has(`${s.start}-${s.seconds}`))]);
+    }
+    if (!write(KEY_DAYS, nextDays)) return;
+    days = nextDays;
+    sessions = nextSessions;
+    write(KEY_SESSIONS, sessions);
+    renderAll();
+    toast(`Imported ${n} day${n === 1 ? '' : 's'}.`, 'ok');
+  }
+  async function resetAll() {
+    const first = await ask('Delete all study data?', 'Every logged day and session will be removed from this browser. Export a backup first if you might need it.', [
+      { label: 'Continue', value: 'yes', cls: 'danger-solid' }
+    ]);
+    if (first !== 'yes') return;
+    const second = await ask('Are you absolutely sure?', 'This cannot be undone.', [
+      { label: 'Yes, delete everything', value: 'yes', cls: 'danger-solid' }
+    ]);
+    if (second !== 'yes') return;
+    days = {}; sessions = [];
+    write(KEY_DAYS, days); write(KEY_SESSIONS, sessions);
+    renderAll();
+    toast('All study data deleted.');
+  }
+
+  /* ---------- Events ---------- */
+  $('btnStart').addEventListener('click', start);
+  $('btnPause').addEventListener('click', pause);
+  $('btnStop').addEventListener('click', stopAndLog);
+  $('btnDiscard').addEventListener('click', discard);
+  $('btnExport').addEventListener('click', exportJSON);
+  $('btnImport').addEventListener('click', () => $('fileInput').click());
+  $('fileInput').addEventListener('change', (e) => { importFile(e.target.files[0]); e.target.value = ''; });
+  $('btnReset').addEventListener('click', resetAll);
+
+  // Re-sync from timestamps whenever the page becomes visible again.
+  const resync = () => {
+    renderTimer();
+    if (dateKey() !== shownDay) renderStats();
+    if (timer.status === 'running') lockScreen();
+  };
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) resync(); });
+  window.addEventListener('focus', resync);
+  window.addEventListener('pageshow', resync);
+
+  // Keep several open tabs consistent.
+  window.addEventListener('storage', (e) => {
+    if (![KEY_DAYS, KEY_SESSIONS, KEY_TIMER, null].includes(e.key)) return;
+    days = cleanDays(read(KEY_DAYS, {}));
+    sessions = cleanSessions(read(KEY_SESSIONS, []));
+    timer = cleanTimer(read(KEY_TIMER, null));
+    renderAll();
+  });
+
+  // The display refreshes from Date.now(), so a throttled or paused interval never causes drift.
+  setInterval(() => {
+    if (timer.status === 'running') renderTimer();
+    if (dateKey() !== shownDay) renderStats();
+  }, 250);
+
+  /* ---------- PWA manifest (inline) & persistent storage ---------- */
+  try {
+    const icon = "data:image/svg+xml," + encodeURIComponent("<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='#0d1017'/><circle cx='32' cy='35' r='16' fill='none' stroke='#f2b544' stroke-width='5'/><path d='M32 35V25M26 10h12' stroke='#f2b544' stroke-width='5' stroke-linecap='round'/></svg>");
+    const manifest = {
+      name: 'Study Time Tracker', short_name: 'Study Timer', display: 'standalone', orientation: 'portrait',
+      background_color: '#0d1017', theme_color: '#0d1017', start_url: location.pathname,
+      icons: [{ src: icon, sizes: 'any', type: 'image/svg+xml', purpose: 'any' }]
+    };
+    const link = document.createElement('link');
+    link.rel = 'manifest';
+    link.href = URL.createObjectURL(new Blob([JSON.stringify(manifest)], { type: 'application/manifest+json' }));
+    document.head.appendChild(link);
+  } catch (e) { /* manifest is optional */ }
+  if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
+
+  /* ---------- Boot ---------- */
+  if (timer.status === 'running') lockScreen();
+  renderAll();
+})();
+</script>
+</body>
+</html>
