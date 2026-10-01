@@ -87,6 +87,32 @@ dialog h2{margin-bottom:8px}
 #toast.show{opacity:1;transform:translate(-50%,0)}
 #toast.err{border-color:var(--danger);color:var(--danger)}
 #toast.ok{border-color:var(--ok)}
+header{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.streak{flex:none;display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:999px;border:1px solid var(--lamp);background:rgba(242,181,68,.1);font-weight:600;font-size:.85rem;white-space:nowrap;font-variant-numeric:tabular-nums}
+.streak.idle{border-color:var(--line);background:transparent;color:var(--muted)}
+.quote{margin:0;padding:14px 8px 14px 16px;border:1px solid var(--line);border-left:3px solid var(--lamp);border-radius:14px;background:var(--surface);display:flex;gap:8px;align-items:flex-start;justify-content:space-between}
+.quote blockquote{margin:0}
+.quote .q{font-style:italic;font-size:1.02rem;line-height:1.5}
+.quote .by{color:var(--muted);font-size:.85rem;margin-top:6px}
+.quote button{flex:none;min-height:44px;min-width:44px;padding:0;border-radius:12px;font-size:1.1rem;background:transparent;color:var(--muted)}
+.ch-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap}
+.ch-head h2{margin:0 0 2px}
+.ch-total{font-size:1.7rem;font-weight:600;font-variant-numeric:tabular-nums;line-height:1.2}
+.ch-total small{font-size:.85rem;color:var(--muted);font-weight:500}
+.badge{padding:5px 10px;border-radius:999px;font-size:.8rem;font-weight:600;border:1px solid;white-space:nowrap}
+.badge.behind{color:var(--danger);border-color:#5a2f37}
+.badge.grind{color:var(--lamp);border-color:#6b5320}
+.badge.super{color:var(--ok);border-color:#2f6a4b}
+.badge.beast{color:#ffd76a;border-color:#ffd76a;background:rgba(255,215,106,.12)}
+.bar-label{display:flex;justify-content:space-between;font-size:.78rem;color:var(--muted);margin:14px 0 6px}
+.track{height:12px;border-radius:999px;background:var(--surface2);overflow:hidden;border:1px solid var(--line)}
+.track.thin{height:8px}
+.track i{display:block;height:100%;width:0;border-radius:999px;background:var(--lamp);transition:width .4s ease}
+.track.met i{background:linear-gradient(90deg,#ffd76a,#7fd6a4)}
+.track.beast i{background:linear-gradient(90deg,#7fd6a4,#ffd76a)}
+.ch-metrics{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px;text-align:center}
+.ch-metrics span{font-size:.78rem;color:var(--muted);display:block}
+.ch-metrics b{font-variant-numeric:tabular-nums;font-size:1.05rem}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 @media (max-width:360px){.controls{grid-template-columns:1fr 1fr}.controls .primary{grid-column:1/-1}}
 </style>
@@ -94,9 +120,20 @@ dialog h2{margin-bottom:8px}
 <body>
 <main>
   <header>
-    <h1>Study Time Tracker</h1>
-    <p class="muted" id="todayLabel"></p>
+    <div>
+      <h1>Study Time Tracker</h1>
+      <p class="muted" id="todayLabel"></p>
+    </div>
+    <div class="streak idle" id="streakBadge" role="status" title="Log at least 30 minutes a day to keep your streak alive."><span aria-hidden="true">🔥</span><span id="streakText">0 Days Streak</span></div>
   </header>
+
+  <figure class="quote" aria-label="Motivational quote">
+    <blockquote>
+      <p class="q" id="quoteText"></p>
+      <p class="by" id="quoteAuthor"></p>
+    </blockquote>
+    <button id="btnQuote" aria-label="Show another quote" title="Shuffle quote">&#8635;</button>
+  </figure>
 
   <section class="timer-card" id="timerCard" aria-label="Stopwatch">
     <div class="status" id="status"><span class="dot"></span><span id="statusText">Ready</span></div>
@@ -114,6 +151,24 @@ dialog h2{margin-bottom:8px}
     <div class="stat"><span>Last 7 days</span><b id="sWeek">0h 0m</b></div>
     <div class="stat"><span>Last 30 days</span><b id="sMonth">0h 0m</b></div>
   </div>
+
+  <section aria-label="80 to 100 hour weekly challenge">
+    <div class="ch-head">
+      <div>
+        <h2>80–100 hour week challenge</h2>
+        <div class="ch-total"><span id="chTotal">0.0h</span> <small>/ 80h &middot; Beast Mode 100h</small></div>
+      </div>
+      <span class="badge behind" id="chBadge">Behind Pace - Step Up</span>
+    </div>
+    <div class="bar-label"><span>Stage 1: 80h baseline</span><span id="chPct1">0%</span></div>
+    <div class="track" id="chTrack1" role="progressbar" aria-label="Progress to 80 hours" aria-valuemin="0" aria-valuemax="80" aria-valuenow="0"><i id="chFill1"></i></div>
+    <div class="bar-label"><span>Stage 2: Beast Mode 100h</span><span id="chPct2">0%</span></div>
+    <div class="track thin" id="chTrack2" role="progressbar" aria-label="Progress from 80 to 100 hours" aria-valuemin="80" aria-valuemax="100" aria-valuenow="80"><i id="chFill2"></i></div>
+    <div class="ch-metrics">
+      <div><span id="chLeftLabel">Left to reach 80h</span><b id="chLeft">80.0h</b></div>
+      <div><span>Daily average (7 days)</span><b id="chAvg">0.0h</b></div>
+    </div>
+  </section>
 
   <section aria-label="Daily breakdown">
     <h2>Past 7 days</h2>
@@ -231,6 +286,7 @@ dialog h2{margin-bottom:8px}
     if (timer.status === 'running') return;
     if (timer.status === 'idle') {
       timer = { status: 'running', startedAt: Date.now(), accumulated: 0, day: dateKey(), sessionStart: Date.now() };
+      nextQuote();
     } else {
       timer.status = 'running';
       timer.startedAt = Date.now();
@@ -276,6 +332,7 @@ dialog h2{margin-bottom:8px}
     write(KEY_SESSIONS, sessions);
     resetTimer();
     renderAll();
+    nextQuote();
     toast(`Logged ${hms(secs)}. Saved.`, 'ok');
   }
   async function discard() {
@@ -327,6 +384,8 @@ dialog h2{margin-bottom:8px}
     $('sToday').textContent = hm(days[keyDaysAgo(0)] || 0);
     $('sWeek').textContent = hm(sumLast(7));
     $('sMonth').textContent = hm(sumLast(30));
+    renderChallenge();
+    renderStreak();
 
     const series = [];
     for (let i = 6; i >= 0; i--) {
@@ -352,6 +411,75 @@ dialog h2{margin-bottom:8px}
     }
   }
   function renderAll() { renderTimer(); renderStats(); }
+
+  /* ---------- Quotes engine ---------- */
+  const QUOTES = [
+    ['Done is better than perfect.', 'Mark Zuckerberg'],
+    ['Work like hell. Put in 80 to 100 hours every week.', 'Elon Musk'],
+    ["If you are born poor it's not your mistake, but if you die poor it's your mistake.", 'Bill Gates'],
+    ['The only way to do great work is to love what you do.', 'Steve Jobs'],
+    ['Discipline is choosing between what you want now and what you want most.', 'Abraham Lincoln'],
+    ['It always seems impossible until it\u2019s done.', 'Nelson Mandela'],
+    ['Genius is one percent inspiration and ninety-nine percent perspiration.', 'Thomas Edison'],
+    ['Energy and persistence conquer all things.', 'Benjamin Franklin'],
+    ['Don\u2019t count the days, make the days count.', 'Muhammad Ali'],
+    ['Success is the sum of small efforts, repeated day in and day out.', 'Robert Collier'],
+    ['Well done is better than well said.', 'Benjamin Franklin']
+  ];
+  let quoteIdx = -1;
+  function nextQuote() {
+    let i;
+    do { i = Math.floor(Math.random() * QUOTES.length); } while (i === quoteIdx && QUOTES.length > 1);
+    quoteIdx = i;
+    $('quoteText').textContent = '\u201C' + QUOTES[i][0] + '\u201D';
+    $('quoteAuthor').textContent = '\u2014 ' + QUOTES[i][1];
+  }
+
+  /* ---------- Daily streak (read-only view of studyTracker.days) ---------- */
+  const STREAK_MIN_SECONDS = 30 * 60;
+  function calcStreak() {
+    // A streak stays alive through today: if today has not reached 30 min yet, count back from yesterday.
+    const todayDone = (days[keyDaysAgo(0)] || 0) >= STREAK_MIN_SECONDS;
+    let n = 0;
+    for (let i = todayDone ? 0 : 1; i < 3650 && (days[keyDaysAgo(i)] || 0) >= STREAK_MIN_SECONDS; i++) n++;
+    return { n, todayDone };
+  }
+  function renderStreak() {
+    const { n, todayDone } = calcStreak();
+    $('streakText').textContent = `${n} ${n === 1 ? 'Day' : 'Days'} Streak`;
+    $('streakBadge').classList.toggle('idle', n === 0 || !todayDone);
+    $('streakBadge').title = todayDone
+      ? 'Today counts. Keep going tomorrow to extend your streak.'
+      : n > 0 ? 'Log 30 minutes today to extend your streak.' : 'Log at least 30 minutes in a day to start a streak.';
+  }
+
+  /* ---------- 80-100 hour weekly challenge ---------- */
+  const T80 = 80 * 3600, T100 = 100 * 3600;
+  const hrs = (s) => (s / 3600).toFixed(1) + 'h';
+  function renderChallenge() {
+    const s = sumLast(7);
+    const p1 = Math.min(s / T80, 1) * 100;
+    const p2 = Math.min(Math.max(s - T80, 0) / (T100 - T80), 1) * 100;
+    $('chTotal').textContent = hrs(s);
+    $('chFill1').style.width = p1 + '%';
+    $('chFill2').style.width = p2 + '%';
+    $('chTrack1').classList.toggle('met', s >= T80);
+    $('chTrack2').classList.toggle('beast', s >= T80);
+    $('chTrack1').setAttribute('aria-valuenow', (Math.min(s, T80) / 3600).toFixed(1));
+    $('chTrack2').setAttribute('aria-valuenow', (Math.min(Math.max(s, T80), T100) / 3600).toFixed(1));
+    $('chPct1').textContent = Math.floor(p1) + '%';
+    $('chPct2').textContent = Math.floor(p2) + '%';
+    const goal = s < T80 ? T80 : T100;
+    $('chLeftLabel').textContent = s >= T100 ? 'Target reached' : `Left to reach ${goal / 3600}h`;
+    $('chLeft').textContent = s >= T100 ? 'Beast Mode' : hrs(goal - s);
+    $('chAvg').textContent = hrs(s / 7);
+    const tier = s < 50 * 3600 ? ['behind', 'Behind Pace - Step Up']
+      : s < T80 ? ['grind', 'Grinding - Push to 80h']
+      : s < T100 ? ['super', 'Superhuman - 80h Target Met!']
+      : ['beast', 'Beast Mode - 100h Achieved!'];
+    $('chBadge').className = 'badge ' + tier[0];
+    $('chBadge').textContent = tier[1];
+  }
 
   /* ---------- Dialog & toast ---------- */
   const dlg = $('dlg');
@@ -462,6 +590,7 @@ dialog h2{margin-bottom:8px}
   $('btnImport').addEventListener('click', () => $('fileInput').click());
   $('fileInput').addEventListener('change', (e) => { importFile(e.target.files[0]); e.target.value = ''; });
   $('btnReset').addEventListener('click', resetAll);
+  $('btnQuote').addEventListener('click', nextQuote);
 
   // Re-sync from timestamps whenever the page becomes visible again.
   const resync = () => {
@@ -505,6 +634,7 @@ dialog h2{margin-bottom:8px}
 
   /* ---------- Boot ---------- */
   if (timer.status === 'running') lockScreen();
+  nextQuote();
   renderAll();
 })();
 </script>
