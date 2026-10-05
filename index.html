@@ -16,7 +16,7 @@
   --bg:#0d1017;--surface:#161b25;--surface2:#1e2532;--line:#2a3243;
   --text:#eef1f6;--muted:#9aa4b8;--lamp:#f2b544;--lamp-ink:#1a1203;
   --danger:#ff7b7b;--ok:#7fd6a4;
-  --font:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  --font:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Noto Sans Bengali","Hind Siliguri","Nirmala UI","Kohinoor Bangla","Shonar Bangla",sans-serif;
   box-sizing:border-box;
 }
 *,*::before,*::after{box-sizing:inherit}
@@ -113,6 +113,22 @@ header{display:flex;justify-content:space-between;align-items:flex-start;gap:12p
 .ch-metrics{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px;text-align:center}
 .ch-metrics span{font-size:.78rem;color:var(--muted);display:block}
 .ch-metrics b{font-variant-numeric:tabular-nums;font-size:1.05rem}
+.streak-row{display:flex;justify-content:center;margin-top:-4px}
+.todo-head{margin-bottom:12px}
+.todo-head h2{margin:0 0 2px}
+.todo-meta{display:flex;justify-content:space-between;align-items:center;gap:10px;margin:10px 0 0}
+.todo-meta .link-btn{margin:0;min-height:44px}
+.todo-list{margin-top:6px}
+.todo{display:flex;align-items:center;gap:6px;border-top:1px solid var(--line)}
+.todo:first-child{border-top:0}
+.todo label{flex:1;display:flex;align-items:center;gap:12px;cursor:pointer;min-height:52px;line-height:1.5;min-width:0}
+.todo label span{overflow-wrap:anywhere}
+.todo input[type=checkbox]{width:22px;height:22px;flex:none;accent-color:var(--lamp)}
+.todo.done label span{text-decoration:line-through;color:var(--muted)}
+.todo .del{flex:none;min-width:44px;min-height:44px;padding:0;background:transparent;border:0;color:var(--muted);font-size:1.3rem}
+.todo-add{display:flex;gap:10px;margin-top:12px}
+.todo-add input{flex:1;min-width:0;min-height:48px;border-radius:14px;border:1px solid var(--line);background:var(--surface2);color:var(--text);font:inherit;padding:0 14px}
+.todo-add input:focus-visible{outline:3px solid var(--lamp);outline-offset:2px}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 @media (max-width:360px){.controls{grid-template-columns:1fr 1fr}.controls .primary{grid-column:1/-1}}
 </style>
@@ -124,7 +140,6 @@ header{display:flex;justify-content:space-between;align-items:flex-start;gap:12p
       <h1>Study Time Tracker</h1>
       <p class="muted" id="todayLabel"></p>
     </div>
-    <div class="streak idle" id="streakBadge" role="status" title="Log at least 30 minutes a day to keep your streak alive."><span aria-hidden="true">🔥</span><span id="streakText">0 Days Streak</span></div>
   </header>
 
   <figure class="quote" aria-label="Motivational quote">
@@ -146,11 +161,31 @@ header{display:flex;justify-content:space-between;align-items:flex-start;gap:12p
     <button class="link-btn" id="btnDiscard" hidden>Discard this session</button>
   </section>
 
+  <section lang="bn" aria-label="দৈনিক পড়ার রুটিন ও চেকলিস্ট">
+    <div class="todo-head">
+      <h2>দৈনিক ১২ ঘণ্টার চেকলিস্ট</h2>
+      <p class="muted" id="todoDay"></p>
+    </div>
+    <button class="primary" id="btnRoutine" style="width:100%">আজকের ১২ ঘণ্টার রুটিন লোড করুন</button>
+    <div class="todo-meta">
+      <span class="muted" id="todoProgress">০/০ কাজ সম্পন্ন</span>
+      <button class="link-btn" id="btnTodoClear">ক্লিয়ার</button>
+    </div>
+    <div class="track thin" role="progressbar" aria-label="আজকের অগ্রগতি" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="todoTrack"><i id="todoFill"></i></div>
+    <ul class="todo-list" id="todoList"></ul>
+    <div class="todo-add">
+      <input id="todoInput" type="text" maxlength="120" placeholder="অতিরিক্ত কাজ লিখুন…" aria-label="নতুন কাজ">
+      <button class="primary" id="btnTodoAdd">যোগ করুন</button>
+    </div>
+  </section>
+
   <div class="stats" aria-label="Totals">
     <div class="stat"><span>Today</span><b id="sToday">0h 0m</b></div>
     <div class="stat"><span>Last 7 days</span><b id="sWeek">0h 0m</b></div>
     <div class="stat"><span>Last 30 days</span><b id="sMonth">0h 0m</b></div>
   </div>
+
+  <div class="streak-row"><div class="streak idle" id="streakBadge" role="status" title="Log at least 30 minutes a day to keep your streak alive."><span aria-hidden="true">🔥</span><span id="streakText">0 Days Streak</span></div></div>
 
   <section aria-label="80 to 100 hour weekly challenge">
     <div class="ch-head">
@@ -210,6 +245,7 @@ header{display:flex;justify-content:space-between;align-items:flex-start;gap:12p
   const KEY_DAYS = 'studyTracker.days';         // { "YYYY-MM-DD": total_seconds }
   const KEY_SESSIONS = 'studyTracker.sessions'; // [{ day, start, end, seconds }]
   const KEY_TIMER = 'studyTracker.timer';       // running/paused stopwatch state
+  const KEY_TODOS = 'studyTracker.todos';       // [{ id, text, done, date }]
   const MAX_SESSIONS = 500;
   const MAX_DAY_SECONDS = 86400;
   const KEY_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -253,6 +289,12 @@ header{display:flex;justify-content:space-between;align-items:flex-start;gap:12p
       .map((s) => ({ day: s.day, start: s.start, end: s.end, seconds: Math.round(s.seconds) }))
       .sort((a, b) => b.end - a.end).slice(0, MAX_SESSIONS);
   }
+  function cleanTodos(arr) {
+    if (!Array.isArray(arr)) return [];
+    const seen = new Set();
+    return arr.filter((t) => t && typeof t.id === 'string' && t.id && typeof t.text === 'string' && t.text.trim() && isRealDate(t.date) && !seen.has(t.id) && seen.add(t.id))
+      .map((t) => ({ id: t.id, text: t.text.trim().slice(0, 200), done: t.done === true, date: t.date }));
+  }
   function cleanTimer(t) {
     const idle = { status: 'idle', startedAt: null, accumulated: 0, day: null, sessionStart: null };
     if (!t || typeof t !== 'object') return idle;
@@ -263,6 +305,7 @@ header{display:flex;justify-content:space-between;align-items:flex-start;gap:12p
 
   let days = cleanDays(read(KEY_DAYS, {}));
   let sessions = cleanSessions(read(KEY_SESSIONS, []));
+  let todos = cleanTodos(read(KEY_TODOS, []));
   let timer = cleanTimer(read(KEY_TIMER, null));
   const persistTimer = () => write(KEY_TIMER, timer);
 
@@ -386,6 +429,7 @@ header{display:flex;justify-content:space-between;align-items:flex-start;gap:12p
     $('sMonth').textContent = hm(sumLast(30));
     renderChallenge();
     renderStreak();
+    renderTodos();
 
     const series = [];
     for (let i = 6; i >= 0; i--) {
@@ -481,6 +525,110 @@ header{display:flex;justify-content:space-between;align-items:flex-start;gap:12p
     $('chBadge').textContent = tier[1];
   }
 
+  /* ---------- Daily routine & checklist (Bengali) ---------- */
+  const BN_DAYS = ['রবিবার', 'সোমবার', 'মঙ্গলবার', 'বুধবার', 'বৃহস্পতিবার', 'শুক্রবার', 'শনিবার']; // Date#getDay() order
+  const BN_SUBJECTS = [
+    'ইংরেজি ২য় ও বাংলা ২য়',   // রবিবার
+    'অর্থনীতি ১ম ও পৌরনীতি',     // সোমবার
+    'অর্থনীতি ২য় ও পৌরনীতি',    // মঙ্গলবার
+    'মনোবিজ্ঞান ও ভূগোল',        // বুধবার
+    'আইসিটি ও ভূগোল',            // বৃহস্পতিবার
+    'সাপ্তাহিক রিভিশন ও মডেল টেস্ট', // শুক্রবার
+    'ইংরেজি ১ম ও বাংলা ১ম'       // শনিবার
+  ];
+  const bn = (n) => String(n).replace(/\d/g, (d) => '০১২৩৪৫৬৭৮৯'[d]);
+  const isRoutine = (t) => t.id.startsWith('r-');
+  const routineId = (day, n) => `r-${day}-${n}`;
+  function routineFor(wd) {
+    const sub = BN_SUBJECTS[wd];
+    return [
+      `ভোর (৪:৩০ - ৮:৩০): ${sub}`,
+      'সকাল (৯:১৫ - ১১:১৫): টেক স্কিল (Linux / Networking / Python)',
+      `দুপুর (১২:০০ - ১:৩০): ${sub} অনুশীলন`,
+      'বিকাল (৩:০০ - ৪:৩০): ইংরেজি চর্চা ও ভোকাবুলারি',
+      'রাত (৮:০০ - ১১:০০): HSC পড়া ও রিভিশন'
+    ];
+  }
+  function commitTodos(next) {
+    if (write(KEY_TODOS, next)) { todos = next; renderTodos(); return true; }
+    renderTodos(); // restore the UI to the last saved state
+    return false;
+  }
+  function renderTodos() {
+    const today = dateKey(), wd = new Date().getDay();
+    $('todoDay').textContent = `আজ ${BN_DAYS[wd]} · ${BN_SUBJECTS[wd]}`;
+    const list = todos.filter((t) => t.date === today)
+      .sort((a, b) => (isRoutine(a) === isRoutine(b) ? (isRoutine(a) ? a.id.localeCompare(b.id) : 0) : isRoutine(a) ? -1 : 1));
+    const ul = $('todoList');
+    ul.textContent = '';
+    if (!list.length) {
+      const li = document.createElement('li');
+      li.className = 'empty';
+      li.textContent = 'আজকের জন্য কোনো কাজ নেই। উপরের বোতামে রুটিন লোড করুন অথবা নিচে নিজের কাজ যোগ করুন।';
+      ul.appendChild(li);
+    }
+    for (const t of list) {
+      const li = document.createElement('li');
+      li.className = 'todo' + (t.done ? ' done' : '');
+      const label = document.createElement('label');
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.checked = t.done;
+      cb.addEventListener('change', () => commitTodos(todos.map((x) => (x.id === t.id ? { ...x, done: cb.checked } : x))));
+      const span = document.createElement('span');
+      span.textContent = t.text;
+      label.append(cb, span);
+      const del = document.createElement('button');
+      del.className = 'del';
+      del.textContent = '\u00D7';
+      del.setAttribute('aria-label', 'মুছুন: ' + t.text);
+      del.addEventListener('click', () => commitTodos(todos.filter((x) => x.id !== t.id)));
+      li.append(label, del);
+      ul.appendChild(li);
+    }
+    const routine = list.filter(isRoutine), extra = list.filter((t) => !isRoutine(t));
+    const doneAll = list.filter((t) => t.done).length;
+    const parts = [];
+    if (routine.length) parts.push(`${bn(routine.filter((t) => t.done).length)}/${bn(routine.length)} সেশন সম্পন্ন`);
+    if (extra.length) parts.push(`${bn(extra.filter((t) => t.done).length)}/${bn(extra.length)} অতিরিক্ত কাজ`);
+    $('todoProgress').textContent = parts.length ? parts.join(' · ') : '০/০ কাজ সম্পন্ন';
+    const pct = list.length ? Math.round((doneAll / list.length) * 100) : 0;
+    $('todoFill').style.width = pct + '%';
+    $('todoTrack').classList.toggle('met', list.length > 0 && pct === 100);
+    $('todoTrack').setAttribute('aria-valuenow', pct);
+    const have = new Set(list.map((t) => t.id));
+    const loaded = [1, 2, 3, 4, 5].every((n) => have.has(routineId(today, n)));
+    $('btnRoutine').disabled = loaded;
+    $('btnRoutine').textContent = loaded ? '✓ আজকের রুটিন লোড করা হয়েছে' : 'আজকের ১২ ঘণ্টার রুটিন লোড করুন';
+    $('btnTodoClear').disabled = !doneAll;
+  }
+  function loadRoutine() {
+    const today = dateKey();
+    const have = new Set(todos.filter((t) => t.date === today).map((t) => t.id));
+    const add = routineFor(new Date().getDay())
+      .map((text, i) => ({ id: routineId(today, i + 1), text, done: false, date: today }))
+      .filter((t) => !have.has(t.id));
+    if (!add.length) return;
+    if (commitTodos([...todos, ...add])) toast('আজকের রুটিন লোড হয়েছে।', 'ok');
+  }
+  function addTodo() {
+    const input = $('todoInput');
+    const text = input.value.trim();
+    if (!text) { toast('কাজের নাম লিখুন।', 'err'); input.focus(); return; }
+    const id = 't-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+    if (commitTodos([...todos, { id, text: text.slice(0, 120), done: false, date: dateKey() }])) { input.value = ''; input.focus(); }
+  }
+  async function clearDone() {
+    const today = dateKey();
+    const n = todos.filter((t) => t.date === today && t.done).length;
+    if (!n) return;
+    const r = await ask('সম্পন্ন কাজ ক্লিয়ার করবেন?', `আজকের ${bn(n)}টি সম্পন্ন কাজ তালিকা থেকে মুছে যাবে।`, [
+      { label: 'ক্লিয়ার করুন', value: 'yes', cls: 'danger-solid' },
+      { label: 'বাতিল', value: 'no' }
+    ]);
+    if (r === 'yes') commitTodos(todos.filter((t) => !(t.date === today && t.done)));
+  }
+
   /* ---------- Dialog & toast ---------- */
   const dlg = $('dlg');
   function ask(title, message, buttons) {
@@ -516,8 +664,8 @@ header{display:flex;justify-content:space-between;align-items:flex-start;gap:12p
 
   /* ---------- Backup & restore ---------- */
   function exportJSON() {
-    if (!Object.keys(days).length && !sessions.length) { toast('Nothing to export yet.', 'err'); return; }
-    const payload = { app: 'study-time-tracker', version: 1, exportedAt: new Date().toISOString(), days, sessions };
+    if (!Object.keys(days).length && !sessions.length && !todos.length) { toast('Nothing to export yet.', 'err'); return; }
+    const payload = { app: 'study-time-tracker', version: 2, exportedAt: new Date().toISOString(), days, sessions, todos };
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -538,7 +686,7 @@ header{display:flex;justify-content:space-between;align-items:flex-start;gap:12p
     if (!entries.length) throw new Error('The file has no study data in it.');
     const bad = entries.filter(([k, v]) => !isRealDate(k) || !isNum(v) || v < 0 || v > MAX_DAY_SECONDS);
     if (bad.length) throw new Error(`${bad.length} of ${entries.length} entries are invalid (first: "${bad[0][0]}"). Dates must be YYYY-MM-DD and seconds between 0 and ${MAX_DAY_SECONDS}.`);
-    return { days: cleanDays(rawDays), sessions: cleanSessions(data.sessions) };
+    return { days: cleanDays(rawDays), sessions: cleanSessions(data.sessions), todos: Array.isArray(data.todos) ? cleanTodos(data.todos) : null };
   }
   async function importFile(file) {
     if (!file) return;
@@ -548,7 +696,7 @@ header{display:flex;justify-content:space-between;align-items:flex-start;gap:12p
     catch (e) { toast(`Import failed: ${e.message} Your data was not changed.`, 'err'); return; }
     const n = Object.keys(imported.days).length;
     const total = Object.values(imported.days).reduce((a, b) => a + b, 0);
-    const choice = await ask('Import backup?', `Found ${n} day${n === 1 ? '' : 's'} totaling ${hm(total)}. Merge keeps your current days and overwrites matching dates. Replace deletes current data first.`, [
+    const choice = await ask('Import backup?', `Found ${n} day${n === 1 ? '' : 's'} totaling ${hm(total)}. ${imported.todos ? ` Includes ${imported.todos.length} task${imported.todos.length === 1 ? '' : 's'}.` : ''} Merge keeps your current days and overwrites matching dates. Replace deletes current data first.`, [
       { label: 'Merge with current data', value: 'merge', cls: 'primary' },
       { label: 'Replace current data', value: 'replace', cls: 'danger-solid' }
     ]);
@@ -563,6 +711,11 @@ header{display:flex;justify-content:space-between;align-items:flex-start;gap:12p
     days = nextDays;
     sessions = nextSessions;
     write(KEY_SESSIONS, sessions);
+    if (imported.todos) { // older backups have no tasks, so current tasks are left untouched
+      const ids = new Set(todos.map((t) => t.id));
+      const nextTodos = choice === 'replace' ? imported.todos : [...todos, ...imported.todos.filter((t) => !ids.has(t.id))];
+      if (write(KEY_TODOS, nextTodos)) todos = nextTodos;
+    }
     renderAll();
     toast(`Imported ${n} day${n === 1 ? '' : 's'}.`, 'ok');
   }
@@ -591,6 +744,10 @@ header{display:flex;justify-content:space-between;align-items:flex-start;gap:12p
   $('fileInput').addEventListener('change', (e) => { importFile(e.target.files[0]); e.target.value = ''; });
   $('btnReset').addEventListener('click', resetAll);
   $('btnQuote').addEventListener('click', nextQuote);
+  $('btnRoutine').addEventListener('click', loadRoutine);
+  $('btnTodoAdd').addEventListener('click', addTodo);
+  $('todoInput').addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); addTodo(); } });
+  $('btnTodoClear').addEventListener('click', clearDone);
 
   // Re-sync from timestamps whenever the page becomes visible again.
   const resync = () => {
@@ -604,10 +761,11 @@ header{display:flex;justify-content:space-between;align-items:flex-start;gap:12p
 
   // Keep several open tabs consistent.
   window.addEventListener('storage', (e) => {
-    if (![KEY_DAYS, KEY_SESSIONS, KEY_TIMER, null].includes(e.key)) return;
+    if (![KEY_DAYS, KEY_SESSIONS, KEY_TIMER, KEY_TODOS, null].includes(e.key)) return;
     days = cleanDays(read(KEY_DAYS, {}));
     sessions = cleanSessions(read(KEY_SESSIONS, []));
     timer = cleanTimer(read(KEY_TIMER, null));
+    todos = cleanTodos(read(KEY_TODOS, []));
     renderAll();
   });
 
@@ -631,6 +789,9 @@ header{display:flex;justify-content:space-between;align-items:flex-start;gap:12p
     document.head.appendChild(link);
   } catch (e) { /* manifest is optional */ }
   if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
+
+  // Offline caching: needs the companion sw.js beside index.html (service workers cannot be inlined). Fails silently without it.
+  if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) navigator.serviceWorker.register('sw.js').catch(() => {});
 
   /* ---------- Boot ---------- */
   if (timer.status === 'running') lockScreen();
